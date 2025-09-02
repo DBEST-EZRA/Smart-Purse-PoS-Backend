@@ -9,7 +9,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Supabase connection
+// Supabase Try connection
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY
@@ -37,14 +37,14 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date() });
 });
 
-// Example: get all products
+// fetch all products
 app.get("/products", async (req, res) => {
   const { data, error } = await supabase.from("products").select("*");
   if (error) return res.status(400).json({ error: error.message });
   res.json(data);
 });
 
-// Example: add product
+// add product
 app.post("/products", async (req, res) => {
   const { name, price } = req.body;
   const { data, error } = await supabase

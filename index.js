@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import userRoutes from "./routes/users.js";
+import inventoryRoutes from "./routes/inventory.js";
 
 dotenv.config();
 
@@ -37,6 +38,7 @@ app.get("/health", (req, res) => {
 
 // Routes
 app.use("/users", userRoutes);
+app.use("/inventory", inventoryRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

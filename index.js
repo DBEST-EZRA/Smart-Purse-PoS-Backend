@@ -5,6 +5,9 @@ import { createClient } from "@supabase/supabase-js";
 import userRoutes from "./routes/users.js";
 import inventoryRoutes from "./routes/inventory.js";
 import saleRoutes from "./routes/sales.js";
+import paymentRoutes from "./routes/payments.js";
+import errorRoutes from "./routes/errors.js";
+import settingRoutes from "./routes/settings.js";
 
 dotenv.config();
 
@@ -41,6 +44,9 @@ app.get("/health", (req, res) => {
 app.use("/users", userRoutes);
 app.use("/inventory", inventoryRoutes);
 app.use("/sales", saleRoutes);
+app.use("/payments", paymentRoutes);
+app.use("/errors", errorRoutes);
+app.use("/settings", settingRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

@@ -88,13 +88,45 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+// Login user
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // 1. Authenticate user with Supabase
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) throw error;
+
+    // 2. Get user's profile from "users" table
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("auth_user_id", data.user.id)
+      .single();
+
+    if (userError) throw userError;
+
+    // 3. Return session + user data
+    res.json({
+      user: userData,
+      session: data.session,
+    });
+  } catch (err) {
+    res.status(401).json({ error: err.message });
+  }
+});
+
 // Reset password (send email)
 router.post("/reset-password", async (req, res) => {
   try {
     const { email } = req.body;
 
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "https://your-app.com/update-password", // change to your frontend route
+      redirectTo: "http://localhost:5173/reset-password",
     });
 
     if (error) throw error;

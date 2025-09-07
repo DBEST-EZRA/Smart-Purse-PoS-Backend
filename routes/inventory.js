@@ -8,7 +8,17 @@ const router = express.Router();
  * Fetch all inventory items
  */
 router.get("/", async (req, res) => {
-  const { data, error } = await supabase.from("inventory").select("*");
+  const { storeId } = req.query;
+
+  if (!storeId) {
+    return res.status(400).json({ error: "storeId is required" });
+  }
+
+  const { data, error } = await supabase
+    .from("inventory")
+    .select("*")
+    .eq("storeid", storeId);
+
   if (error) return res.status(400).json({ error: error.message });
   res.json(data);
 });

@@ -9,6 +9,7 @@ const router = express.Router();
  */
 router.get("/", async (req, res) => {
   const { storeId } = req.query;
+  console.log("Received storeId:", storeId);
 
   if (!storeId) {
     return res.status(400).json({ error: "storeId is required" });
@@ -17,9 +18,10 @@ router.get("/", async (req, res) => {
   const { data, error } = await supabase
     .from("inventory")
     .select("*")
-    .eq("storeid", storeId);
+    .eq("store_id", storeId);
 
   if (error) return res.status(400).json({ error: error.message });
+  console.log("Fetched inventory rows:", data.length);
   res.json(data);
 });
 
@@ -45,15 +47,7 @@ router.get("/:id", async (req, res) => {
  */
 router.post("/", async (req, res) => {
   try {
-    const {
-      item,
-      description,
-      buyingprice,
-      sellingprice,
-      barcode,
-      storeid,
-      quantity,
-    } = req.body;
+    const { item, description, rate, category, vat, storeid } = req.body;
 
     const { data, error } = await supabase
       .from("inventory")
@@ -61,11 +55,10 @@ router.post("/", async (req, res) => {
         {
           item,
           description,
-          buyingprice,
-          sellingprice,
-          barcode,
-          storeid,
-          quantity,
+          rate,
+          category,
+          vat,
+          store_id: storeid,
         },
       ])
       .select()
@@ -86,26 +79,17 @@ router.post("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      item,
-      description,
-      buyingprice,
-      sellingprice,
-      barcode,
-      storeid,
-      quantity,
-    } = req.body;
+    const { item, description, rate, category, vat, storeid } = req.body;
 
     const { data, error } = await supabase
       .from("inventory")
       .update({
         item,
         description,
-        buyingprice,
-        sellingprice,
-        barcode,
+        rate,
+        category,
+        vat,
         storeid,
-        quantity,
       })
       .eq("id", id)
       .select()

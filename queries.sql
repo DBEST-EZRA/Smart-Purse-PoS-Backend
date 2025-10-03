@@ -17,7 +17,7 @@ create table public.inventory (
     sellingPrice numeric(12,2) not null,
     profit numeric(12,2) generated always as (sellingPrice - buyingPrice) stored,
     barcode text unique,
-    storeId uuid references public.stores(id) on delete cascade, -- assuming you have a stores table
+    storeId uuid references public.stores(id) on delete cascade, 
     quantity integer not null default 0,
     created_at timestamptz default now()
 );

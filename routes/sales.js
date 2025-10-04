@@ -5,61 +5,97 @@ const router = express.Router();
 
 /**
  * GET /sales
- * Fetch all sales records
+ * Fetch sales records by store id
  */
 router.get("/", async (req, res) => {
-  const { data, error } = await supabase
-    .from("sales")
-    .select("*")
-    .order("created_at", { ascending: false });
+  try {
+    const { storeid } = req.query;
 
-  if (error) return res.status(400).json({ error: error.message });
-  res.json(data);
-});
+    let query = supabase
+      .from("sales")
+      .select(
+        `
+        *,
+        sale_item(*)
+      `
+      ) // join sale_item table
+      .order("created_at", { ascending: false });
 
-/**
- * GET /sales/:id
- * Fetch a single sale by ID
- */
-router.get("/:id", async (req, res) => {
-  const { id } = req.params;
-  const { data, error } = await supabase
-    .from("sales")
-    .select("*")
-    .eq("id", id)
-    .single();
+    if (storeid) {
+      query = query.eq("storeid", storeid);
+    }
 
-  if (error) return res.status(400).json({ error: error.message });
-  res.json(data);
+    const { data, error } = await query;
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 /**
  * POST /sales
- * Add a new sale record
+ * Add a new sale record with items at the same time
  */
 router.post("/", async (req, res) => {
   try {
-    const { item, description, sellingprice, profit, quantity, storeid } =
-      req.body;
+    const {
+      billno,
+      servedby,
+      paymentstatus = "unpaid",
+      total,
+      paymentmethod,
+      storeid,
+      vat = 0,
+      items = [], // array of sale items
+    } = req.body;
 
-    const { data, error } = await supabase
+    // 1️⃣ Insert into sales
+    const { data: sale, error: saleError } = await supabase
       .from("sales")
       .insert([
         {
-          item,
-          description,
-          sellingprice,
-          profit,
-          quantity,
+          billno,
+          servedby,
+          paymentstatus,
+          total,
+          paymentmethod,
           storeid,
+          vat,
         },
       ])
       .select()
       .single();
 
-    if (error) throw error;
+    if (saleError) throw saleError;
 
-    res.status(201).json(data);
+    // 2️⃣ Insert into sale_item (if any items exist)
+    if (items.length > 0) {
+      const saleItems = items.map((item) => ({
+        billno: billno,
+        name: item.name,
+        rate: item.rate,
+        quantity: item.quantity,
+        storeid: storeid,
+        vat: item.vat || 0,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("sale_item")
+        .insert(saleItems);
+
+      if (itemsError) {
+        // rollback sale if items fail
+        await supabase.from("sales").delete().eq("billno", billno);
+        throw itemsError;
+      }
+    }
+
+    res.status(201).json({
+      ...sale,
+      items,
+    });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -68,30 +104,102 @@ router.post("/", async (req, res) => {
 /**
  * PUT /sales/:id
  * Update a sale record
+ * use this for checkout
  */
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { item, description, sellingprice, profit, quantity, storeid } =
-      req.body;
+    const {
+      billno,
+      servedby,
+      paymentstatus,
+      total,
+      paymentmethod,
+      storeid,
+      vat,
+    } = req.body;
 
     const { data, error } = await supabase
       .from("sales")
       .update({
-        item,
-        description,
-        sellingprice,
-        profit,
-        quantity,
+        billno,
+        servedby,
+        paymentstatus,
+        total,
+        paymentmethod,
         storeid,
+        vat,
+      })
+      .eq("id", id)
+      .select();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Use this for Recalled Bill
+// Edits Sale alongside Sale Item
+router.put("/recall/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      billno,
+      servedby,
+      paymentstatus,
+      total,
+      paymentmethod,
+      storeid,
+      vat,
+      sale_item = [],
+    } = req.body;
+
+    // 1️⃣ Update the main sale
+    const { data: updatedSale, error: saleError } = await supabase
+      .from("sales")
+      .update({
+        billno,
+        servedby,
+        paymentstatus,
+        total,
+        paymentmethod,
+        storeid,
+        vat,
       })
       .eq("id", id)
       .select()
       .single();
 
-    if (error) throw error;
+    if (saleError) throw saleError;
 
-    res.json(data);
+    // 2️⃣ Delete existing items for this billno
+    await supabase.from("sale_item").delete().eq("billno", billno);
+
+    // 3️⃣ Insert the new sale items (don’t include subtotal!)
+    if (sale_item.length > 0) {
+      const newItems = sale_item.map((item) => ({
+        billno,
+        name: item.name,
+        rate: item.rate,
+        quantity: item.quantity,
+        storeid,
+        vat: item.vat || 0,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("sale_item")
+        .insert(newItems);
+
+      if (itemsError) throw itemsError;
+    }
+
+    // 4️⃣ Respond with the updated sale + items
+    res.json({
+      ...updatedSale,
+      sale_item,
+    });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

@@ -9,6 +9,7 @@ import paymentRoutes from "./routes/payments.js";
 import errorRoutes from "./routes/errors.js";
 import settingRoutes from "./routes/settings.js";
 import CategoriesRoutes from "./routes/categories.js";
+import StoresRoutes from "./routes/stores.js";
 
 dotenv.config();
 
@@ -49,6 +50,7 @@ app.use("/payments", paymentRoutes);
 app.use("/errors", errorRoutes);
 app.use("/settings", settingRoutes);
 app.use("/categories", CategoriesRoutes);
+app.use("/stores", StoresRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
